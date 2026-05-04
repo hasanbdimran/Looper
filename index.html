@@ -52,7 +52,7 @@
   <label>
     Speed
     <select id="speed">
-	  <option value="0.25">0.25x</option>
+	<option value="0.25">0.25x</option>
       <option value="0.5">0.5x</option>
       <option value="0.75">0.75x</option>
       <option value="1" selected>1x</option>
@@ -167,20 +167,50 @@ noUiSlider.create(sliderEl, {
 
 abSlider = sliderEl.noUiSlider;
 
-// slider -> inputs
-abSlider.on("update", (values) => setInputsFromSlider(values));
+let editingA = false;
+let editingB = false;
 
-// inputs -> slider (when user types)
-AInput.addEventListener("input", () => {
+function applyInputsToSlider() {
   if (!abSlider) return;
-  const [a,b] = ensureMinGap(parseFloat(AInput.value||"0"), parseFloat(BInput.value||"0"));
+  let a = parseFloat(AInput.value || "0");
+  let b = parseFloat(BInput.value || "0");
+  if (isNaN(a)) a = 0;
+  if (isNaN(b)) b = a + 0.1;
+  if (b <= a) b = a + 0.1;
   abSlider.set([a, b]);
+}
+
+// mark when user is typing
+AInput.onfocus = () => editingA = true;
+BInput.onfocus = () => editingB = true;
+
+AInput.onblur = () => { editingA = false; applyInputsToSlider(); };
+BInput.onblur = () => { editingB = false; applyInputsToSlider(); };
+
+// Enter applies too
+AInput.onkeydown = (e) => { if (e.key === "Enter") AInput.blur(); };
+BInput.onkeydown = (e) => { if (e.key === "Enter") BInput.blur(); };
+
+// slider -> inputs ONLY while dragging (doesn't fight typing)
+abSlider.on("slide", (values) => {
+  const a = parseFloat(values[0]);
+  const b = parseFloat(values[1]);
+  if (!editingA) AInput.value = a.toFixed(2);
+  if (!editingB) BInput.value = b.toFixed(2);
 });
-BInput.addEventListener("input", () => {
-  if (!abSlider) return;
-  const [a,b] = ensureMinGap(parseFloat(AInput.value||"0"), parseFloat(BInput.value||"0"));
-  abSlider.set([a, b]);
-});
+
+document.getElementById("setA").onclick = () => {
+  if (!player) return;
+  AInput.value = player.getCurrentTime().toFixed(2);
+  if (abSlider) abSlider.set([parseFloat(AInput.value), null]);
+};
+
+document.getElementById("setB").onclick = () => {
+  if (!player) return;
+  BInput.value = player.getCurrentTime().toFixed(2);
+  if (abSlider) abSlider.set([null, parseFloat(BInput.value)]);
+};
+
 
 // current time display
 if (timeUiTimer) clearInterval(timeUiTimer);
